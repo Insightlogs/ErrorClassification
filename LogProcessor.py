@@ -7,7 +7,7 @@ class LogProcessor:
         self.embedder = EmbeddingGenerator(region)
 
     def format_log_for_embedding(self, event):
-        return f"Status {event['status']} from {event['source']}: {event['message']} [Category: {event.get('category', 'unknown')}]"
+        return f"Status {event['status']}: {event['message']} "
 
     def process(self, event):
         # Step 1: Check similarity using ErrorClassifier (requires embedding first)
@@ -22,9 +22,7 @@ if __name__ == "__main__":
     sample_event = {
         "timestamp": "2025-04-13T18:00:00Z",
         "message": "Timeout occurred while processing order 12345",
-        "status": 500,
-        "category": "error",
-        "source": "order-service"
+        "status": 500
     }
 
     processor = LogProcessor(opensearch_host="akoanqav21wglrnpiu4b.eu-north-1.aoss.amazonaws.com", region="eu-north-1")
