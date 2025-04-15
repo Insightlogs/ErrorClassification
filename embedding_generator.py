@@ -93,11 +93,12 @@ import json
 class EmbeddingGenerator:
     def __init__(self, region):
         self.client = boto3.client("bedrock-runtime", region_name=region)
-        self.model_id = "amazon.titan-embed-text-v2:0"
+        self.model_id = "cohere.embed-english-v3"
 
     def get_embedding(self, text):
         payload = {
-            "inputText": text
+            "texts": [text],
+            "input_type": "search_query"
         }
 
         response = self.client.invoke_model(
@@ -108,4 +109,5 @@ class EmbeddingGenerator:
         )
 
         result = json.loads(response["body"].read().decode("utf-8"))
-        return result["embedding"]
+        print(result)
+        return result["embeddings"]

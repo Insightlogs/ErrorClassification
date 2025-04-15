@@ -21,10 +21,10 @@ class LogProcessor:
 if __name__ == "__main__":
     sample_event = {
         "timestamp": "2025-04-13T18:00:00Z",
-        "message": "Timeout occurred while processing order 12345",
-        "status": 500
+        "message": "access premmison /fil/xx",
+        "status": 406
     }
 
-    processor = LogProcessor(opensearch_host="akoanqav21wglrnpiu4b.eu-north-1.aoss.amazonaws.com", region="eu-north-1")
+    processor = LogProcessor(opensearch_host="d48fb9qgyoz01pr1jbfk.us-east-1.aoss.amazonaws.com", region="us-east-1")
     classification = processor.process(sample_event)
     print("Final classification result:", classification)

@@ -28,8 +28,8 @@ class ErrorClassifier:
 # #     pool_maxsize=20,
 # # )
         
-        self.claude_model = "eu.anthropic.claude-3-7-sonnet-20250219-v1:0"
-        self.inference_profile_arn = "arn:aws:bedrock:eu-north-1:209479310892:inference-profile/eu.anthropic.claude-3-7-sonnet-20250219-v1:0"
+        self.LLMmodel = "us.deepseek.r1-v1:0"
+        # self.inference_profile_arn = "arn:aws:bedrock:eu-north-1:209479310892:inference-profile/eu.anthropic.claude-3-7-sonnet-20250219-v1:0"
 
     def search_opensearch(self, embedding):
         body = {
@@ -37,17 +37,21 @@ class ErrorClassifier:
             "query": {
                 "knn": {
                     "embedding": {
-                        "vector": embedding,
+                        "vector": embedding[0],
                         "k": 1
                     }
                 }
             }
         }
         response = self.opensearch_client.search(index="error-classification", body=body)
-        # print(response)
-        top_hit = response["hits"]["hits"][0]
-        return top_hit["_score"], top_hit["_source"]
+        hits = response.get("hits", {}).get("hits", [])
 
+        if not hits:
+            return 0.0, {}  # No match found, return dummy values
+
+        top_hit = hits[0]
+        return top_hit["_score"], top_hit["_source"]
+    
     def classify_with_claude(self, event):
         prompt = f"Classify the following log and give a category with confidence level:\n\n{event['message']} (Status {event['status']})"
         payload = {
@@ -73,6 +77,34 @@ class ErrorClassifier:
         label = parts[0].strip()
         confidence = float(parts[1].strip()) if len(parts) > 1 else 0.5
         return label, confidence
+    
+    def classify_with_llm(self, event):
+        prompt = f"Classify the following log and provide a category with confidence level:\n\n{event['message']} (Status {event['status']})"
+        formatted_prompt = f"<｜begin▁of▁sentence｜><｜User｜>{prompt}<｜Assistant｜>"
+
+        payload = {
+            "prompt": formatted_prompt,
+            "temperature": 0.2,
+            "top_p": 0.9,
+            "max_tokens": 200
+        }
+
+        response = self.bedrock_client.invoke_model(
+            modelId="us.deepseek.r1-v1:0",  # Inference profile ID
+            body=json.dumps(payload),
+            contentType="application/json",
+            accept="application/json"
+        )
+
+        result = json.loads(response["body"].read())
+        output_text = result.get("choices", [{}])[0].get("text", "unknown, 0.5")
+
+        parts = output_text.split(',')
+        label = parts[0].strip()
+        # confidence = float(parts[1].strip()) if len(parts) > 1 else 0.5
+        return label
+
+
 
     def store_classification(self, document):
         self.opensearch_client.index(index="error-classification", body=document)
@@ -82,7 +114,8 @@ class ErrorClassifier:
         print(score)
 
         if score < 0.70:
-            # label, confidence = self.classify_with_claude(event)
+            label = self.classify_with_llm(event)
+            print(label)
             result = {
                 "datetime": event.get("timestamp"),
                 "message": event["message"],
@@ -92,7 +125,7 @@ class ErrorClassifier:
                 # "label": label,
                 # "confidence": confidence,
                 # "source": event.get("source"),
-                "category": 'Network',
+                "category": label,
                 # "origin": "claude"
             }
             self.store_classification(result)
