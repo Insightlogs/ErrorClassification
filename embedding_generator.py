@@ -109,5 +109,5 @@ class EmbeddingGenerator:
         )
 
         result = json.loads(response["body"].read().decode("utf-8"))
-        print(result)
+        # print(result)
         return result["embeddings"]
