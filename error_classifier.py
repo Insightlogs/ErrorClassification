@@ -23,22 +23,27 @@ class ErrorClassifier:
 
     def search_opensearch(self, embedding):
         body = {
-            "size": 1,
+            "size": 10,
             "query": {
                 "knn": {
                     "embedding": {
                         "vector": embedding,
-                        "k": 1
+                        "k": 10
                     }
                 }
             }
         }
-        print(type(embedding))
-        print(len(embedding))
-        print(type(embedding[0]))
+        # print(type(embedding))
+        # print(len(embedding))
+        # print(type(embedding[0]))
 
         response = self.opensearch_client.search(index="error-classification", body=body)
         hits = response.get("hits", {}).get("hits", [])
+        # for item in hits:
+        #     del item["_source"]["embedding"]
+        #     print(item)
+
+       
 
         if not hits:
             return 0.0, {}
@@ -133,9 +138,8 @@ Please return only the category name. for the following sentence: {event['Messag
                 print(label)
 
                 classification_doc = {
-                    "datetime": iso_time,
+                    "timestamp": iso_time,
                     "message": event["Message"],
-                    "filePath": event["Message"],
                     "embedding": embedding,
                     "category": label
                 }
@@ -145,8 +149,10 @@ Please return only the category name. for the following sentence: {event['Messag
                     "timestamp": iso_time,
                     "message": event["Message"],
                     "status": event["Status"],
-                    "category": label,
-                    "label_source": "LLM"
+                    "category": category,
+                    "label_source": "LLM",
+                    "filePath": event["FilePath"],
+                    "hostname": event["Hostname"]
                 }
                 self.store_log(log_doc)
 
@@ -160,7 +166,10 @@ Please return only the category name. for the following sentence: {event['Messag
                     "message": event["Message"],
                     "status": event["Status"],
                     "category": category,
-                    "label_source": "opensearch"
+                    "label_source": "opensearch",
+                    "filePath": event["FilePath"],
+                    "hostname": event["Hostname"]
+
                 }
                 self.store_log(log_doc)
                 return log_doc
